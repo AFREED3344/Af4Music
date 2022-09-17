@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.musicplayer">
+    package="in.brototype.af4music">
+    <uses-permission
+     android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+     android:maxSdkVersion="18" />
    <application
-        android:label="musicplayer"
+        android:label="af4music"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

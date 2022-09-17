@@ -1,4 +1,4 @@
-package com.example.musicplayer
+package in.brototype.af4music
 
 import io.flutter.embedding.android.FlutterActivity
 

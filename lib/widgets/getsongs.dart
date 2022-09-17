@@ -1,0 +1,20 @@
+import 'package:just_audio/just_audio.dart';
+import 'package:on_audio_query/on_audio_query.dart';
+
+class GetSongs {
+  static AudioPlayer player = AudioPlayer();
+  static int currentIndes = -1;
+  static List<SongModel> songscopy = [];
+  static List<SongModel> playingSongs = [];
+  //song loop
+  static ConcatenatingAudioSource createSongList(List<SongModel> songs) {
+    List<AudioSource> sources = [];
+    playingSongs = songs;
+    for (var song in songs) {
+      sources.add(AudioSource.uri(
+        Uri.parse(song.uri!),
+      ));
+    }
+    return ConcatenatingAudioSource(children: sources);
+  }
+}

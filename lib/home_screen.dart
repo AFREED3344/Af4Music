@@ -1,8 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:musicplayer/database/favouritebutton.dart';
+import 'package:musicplayer/database/favouritedb.dart';
+import 'package:musicplayer/nowplayscreen.dart';
 import 'package:musicplayer/settings.dart';
+import 'package:musicplayer/widgets/getsongs.dart';
+import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class ScreenHome extends StatelessWidget {
+class ScreenHome extends StatefulWidget {
   const ScreenHome({Key? key}) : super(key: key);
+  static List<SongModel> songs = [];
+
+  @override
+  State<ScreenHome> createState() => _ScreenHomeState();
+}
+
+class _ScreenHomeState extends State<ScreenHome> {
+  final OnAudioQuery audioQuery = OnAudioQuery();
+
+  @override
+  void initState() {
+    super.initState();
+    requestPermition();
+  }
+
+  void requestPermition() async {
+    await Permission.storage.request();
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,149 +35,139 @@ class ScreenHome extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        title: const Text(
+          'Just For You',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+        ),
         actions: [
-          Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: IconButton(
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: ((context) => const SettingsScreen())));
-                  },
-                  icon: const Icon(
-                    Icons.settings,
-                    size: 30,
-                  ))),
+          IconButton(
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: ((context) => const SettingsScreen())));
+              },
+              icon: const Icon(
+                Icons.settings,
+                size: 25,
+              )),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(top: 30),
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(right: 100),
-              child: Text(
-                'Recently Played ...',
-                style: TextStyle(
-                    color: Color.fromARGB(255, 192, 190, 190),
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold),
-              ),
+      body: FutureBuilder<List<SongModel>>(
+        future: audioQuery.querySongs(
+            sortType: null,
+            orderType: OrderType.ASC_OR_SMALLER,
+            uriType: UriType.EXTERNAL,
+            ignoreCase: true),
+        builder: (context, item) {
+          if (item.data == null) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if (item.data!.isEmpty) {
+            return const Center(
+              child: Text('Sorry No Songs Found'),
+            );
+          }
+          // adding song to screenhome.song
+          ScreenHome.songs = item.data!;
+          if (!FavoriteDB.isInitialized) {
+            FavoriteDB.initialise(item.data!);
+          }
+          GetSongs.songscopy = ScreenHome.songs;
+          return GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 2,
             ),
-            const SizedBox(
-              height: 20,
-            ),
-            Expanded(
-              flex: 1,
-              child: GridView.builder(
-                //scrollDirection: Axis.vertical,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  // return
-                  return Container(
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                            color: const Color.fromARGB(255, 253, 253, 254))),
-                    child: Card(
-                      color: Colors.black,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(25),
-                              child: Image.asset(
-                                'assets/songs icon.jpeg',
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                              child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: const [
-                              Text(
-                                'songsname',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              Icon(
-                                Icons.favorite,
-                                color: Colors.white,
-                              )
-                            ],
-                          ))
-                        ],
-                      ),
-                    ),
-                  );
+            itemCount: item.data!.length,
+            itemBuilder: (BuildContext context, int index) {
+              return GestureDetector(
+                onTap: () {
+                  GetSongs.player.setAudioSource(
+                      GetSongs.createSongList(item.data!),
+                      initialIndex: index);
+                  GetSongs.player.play();
+                  setState(() {});
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NowPlay(
+                          playerSong: item.data!,
+                        ), //songmodel Passing
+                      ));
                 },
-                itemCount: 3,
-              ),
-            ),
-            const SizedBox(
-              height: 30,
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 180),
-              child: Text(
-                'Just For You',
-                style: TextStyle(
-                    color: Color.fromARGB(255, 197, 195, 195),
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-                flex: 4,
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                  ),
-                  itemBuilder: (BuildContext context, int index) {
-                    return Container(
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                              color: const Color.fromARGB(255, 253, 253, 254))),
-                      child: Card(
-                        color: Colors.black,
-                        child: Column(
+                child: Card(
+                  color: Colors.transparent,
+                  surfaceTintColor: Colors.white,
+                  elevation: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        //  flex: 6,
+                        child: QueryArtworkWidget(
+                          id: item.data![index].id,
+                          type: ArtworkType.AUDIO,
+                          nullArtworkWidget: const Icon(
+                            Icons.music_note_outlined,
+                            color: Colors.white,
+                            size: 70,
+                          ),
+                          artworkFit: BoxFit.fill,
+                          artworkBorder: const BorderRadius.all(
+                            Radius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 7,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 5,
+                          right: 8,
+                        ),
+                        child: Row(
                           children: [
                             Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(25),
-                                child: Image.asset(
-                                  'assets/songs icon.jpeg',
-                                  // fit: BoxFit.cover,
+                              flex: 4,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                // ignore: sized_box_for_whitespace
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.data![index].displayNameWOExt,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      "${item.data![index].artist}",
+                                      style: const TextStyle(
+                                          fontSize: 10, color: Colors.white),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: const [
-                                Text(
-                                  'songsname',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                Icon(
-                                  Icons.favorite,
-                                  color: Colors.white,
-                                )
-                              ],
-                            )
+                            Expanded(
+                                flex: 1,
+                                child: FavoriteBut(song: item.data![index]))
                           ],
                         ),
                       ),
-                    );
-                  },
-                  itemCount: 6,
-                )),
-          ],
-        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
